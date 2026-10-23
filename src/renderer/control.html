@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'" />
+  <title>Pingo</title>
+  <link rel="stylesheet" href="control.css" />
+</head>
+<body>
+  <!-- Landscape layout: three columns that always fit on one screen (no scrolling).
+       main.js sizes the window to the display and zooms the whole page to fit. -->
+  <main class="layout">
+    <!-- column 1: status + start/stop -->
+    <div class="col">
+      <header>
+        <canvas id="buddy" width="90" height="130"></canvas>
+        <div>
+          <h1 id="title">PINGO</h1>
+          <div id="status" class="pill">…</div>
+          <p id="sub" class="muted"></p>
+        </div>
+      </header>
+
+      <button id="power" class="power">…</button>
+
+      <section>
+        <div class="stat">
+          <span class="label">TODAY</span>
+          <span id="today" class="big">0/8</span>
+          <span class="muted">glasses of water</span>
+        </div>
+        <div id="meter" class="meter"></div>
+      </section>
+
+      <div class="actions">
+        <button id="drink" class="btn">Drink now</button>
+        <button id="test" class="btn">Test message</button>
+      </div>
+
+      <footer>
+        <span id="version" class="muted"></span>
+        <button id="quit" class="link">Quit Pingo completely</button>
+      </footer>
+    </div>
+
+    <!-- column 2: character + names -->
+    <div class="col">
+      <section>
+        <span class="label">YOUR BUDDY</span>
+        <div id="chars" class="chars"></div>
+        <label class="field"><span>Buddy's name</span><input id="buddyName" maxlength="16" placeholder="Pingo" /></label>
+        <label class="field"><span>Your name</span><input id="userName" maxlength="20" placeholder="so your buddy can greet you" /></label>
+      </section>
+
+      <section class="rows fill">
+        <div class="chat-head">
+          <span class="label">PRIVACY CAMERA</span>
+          <span id="faceStatus" class="chat-status"></span>
+        </div>
+        <label class="row"><span>Show message text only when it's just me</span><input type="checkbox" id="faceGate" /><i class="switch"></i></label>
+        <div class="face-actions">
+          <button id="faceSetup" class="btn">Set up my face</button>
+          <button id="faceTest" class="btn">Test</button>
+          <button id="faceDelete" class="btn danger">Delete</button>
+        </div>
+      </section>
+    </div>
+
+    <!-- column 3: WhatsApp link + settings -->
+    <div class="col">
+      <section class="rows">
+        <div class="chat-head">
+          <span class="label">WHATSAPP LINK</span>
+          <span id="chatStatus" class="chat-status"></span>
+        </div>
+        <label class="row"><span>Read WhatsApp &amp; Telegram</span><input type="checkbox" id="chat" /><i class="switch"></i></label>
+        <label class="row"><span>Show message text</span><input type="checkbox" id="preview" /><i class="switch"></i></label>
+        <button id="notifSettings" class="link fix" hidden>Open Windows notification settings</button>
+      </section>
+
+      <section class="rows fill">
+        <div class="chat-head"><span class="label">SETTINGS</span></div>
+        <label class="row"><span>Water reminders</span><input type="checkbox" id="water" /><i class="switch"></i></label>
+        <label class="row"><span>Message notifications</span><input type="checkbox" id="notify" /><i class="switch"></i></label>
+        <label class="row"><span>Keep buddy on screen</span><input type="checkbox" id="visible" /><i class="switch"></i></label>
+        <label class="row"><span>Start with Windows</span><input type="checkbox" id="login" /><i class="switch"></i></label>
+        <label class="row"><span>Remind every</span>
+          <select id="interval">
+            <option value="20">20 min</option><option value="30">30 min</option><option value="45">45 min</option>
+            <option value="60">60 min</option><option value="90">90 min</option>
+          </select>
+        </label>
+        <label class="row"><span>Daily goal</span>
+          <select id="goal">
+            <option value="6">6 glasses</option><option value="8">8 glasses</option>
+            <option value="10">10 glasses</option><option value="12">12 glasses</option>
+          </select>
+        </label>
+      </section>
+    </div>
+  </main>
+
+  <!-- face setup / test screen (covers the panel while the camera is on) -->
+  <div id="faceModal" class="modal" hidden>
+    <div class="modal-box">
+      <div class="cam">
+        <video id="camVideo" muted playsinline></video>
+        <canvas id="camOverlay"></canvas>
+        <span id="camRec" class="rec" hidden>● CAMERA ON</span>
+      </div>
+      <div class="modal-side">
+        <span id="faceTitle" class="label">SET UP MY FACE</span>
+        <p id="faceHelp" class="muted">Look at the screen. When you press Start, slowly turn your head a little left, right, up and down. Only you should be in the picture.</p>
+        <div class="progress"><i id="faceBar"></i></div>
+        <p id="faceMsg" class="face-msg"></p>
+        <div class="modal-actions">
+          <button id="faceGo" class="power start">START</button>
+          <button id="faceClose" class="btn">Cancel</button>
+        </div>
+        <p class="muted small">Only face measurements (not photos) are saved, encrypted on this PC. Nothing is uploaded.</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="sprite.js"></script>
+  <script src="camera.js"></script>
+  <script src="control.js"></script>
+</body>
+</html>

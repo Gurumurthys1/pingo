@@ -1,0 +1,10 @@
+Face models used by Pingo's privacy camera (both from the OpenCV Model Zoo,
+https://github.com/opencv/opencv_zoo, mirrored at https://huggingface.co/opencv):
+
+face_detection_yunet_2023mar.onnx  - YuNet face detector, MIT License
+  Copyright (c) 2020 Shiqi Yu <shiqi.yu@gmail.com>
+
+face_recognition_sface_2021dec.onnx - SFace face recognizer, Apache License 2.0
+  Zhong, Y. et al. "SFace: Sigmoid-Constrained Hypersphere Loss for Robust Face Recognition"
+
+Both run fully offline inside Pingo via onnxruntime-node. No images leave the PC.

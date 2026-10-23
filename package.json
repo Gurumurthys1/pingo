@@ -1,0 +1,53 @@
+{
+  "name": "pingo",
+  "productName": "Pingo",
+  "version": "1.2.0",
+  "description": "Pingo - a pixel desktop buddy that reminds you to drink water and delivers your messages in style.",
+  "main": "src/main.js",
+  "author": "Gurumurthys1",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win nsis"
+  },
+  "devDependencies": {
+    "@fontsource/press-start-2p": "^5.3.0",
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.pingo.buddy",
+    "productName": "Pingo",
+    "files": [
+      "src/**/*",
+      "package.json",
+      "!node_modules/onnxruntime-node/bin/napi-v3/linux/**",
+      "!node_modules/onnxruntime-node/bin/napi-v3/darwin/**",
+      "!node_modules/onnxruntime-node/bin/napi-v3/win32/arm64/**"
+    ],
+    "asarUnpack": [
+      "node_modules/onnxruntime-node/**"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.png",
+      "artifactName": "Pingo-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Pingo",
+      "runAfterFinish": true,
+      "include": "build/installer.nsh"
+    }
+  },
+  "dependencies": {
+    "onnxruntime-node": "^1.20.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Gurumurthys1/pingo.git"
+  }
+}
