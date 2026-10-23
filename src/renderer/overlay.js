@@ -52,9 +52,20 @@
     document.body.appendChild(panel);
     const chars = Sprite.characterList();
     let ci = 0;
+    // stand-in "profile photo" for the demo (the app uses the sender's real one)
+    const demoAvatar = () => {
+      const cv = document.createElement('canvas');
+      cv.width = cv.height = 96;
+      const c = cv.getContext('2d');
+      const g = c.createLinearGradient(0, 0, 96, 96);
+      g.addColorStop(0, '#ffcf87'); g.addColorStop(1, '#ff8fa3');
+      c.fillStyle = g; c.fillRect(0, 0, 96, 96);
+      c.drawImage(Sprite.frameCanvas({ pose: 'idle', frame: 0, eyes: 'open', mouth: 'smile', waveFrame: 0 }, 8, 1, 'mira'), -24, -4);
+      return cv.toDataURL('image/png');
+    };
     panel.addEventListener('click', (e) => {
       const a = e.target.dataset.a;
-      if (a === 'notify') handler({ type: 'notify', from: 'Priya', message: 'Hey! Are we still on for lunch at 1? 🍜', source: 'WhatsApp' });
+      if (a === 'notify') handler({ type: 'notify', from: 'Priya', message: 'Hey! Are we still on for lunch at 1? 🍜', source: 'WhatsApp', avatar: demoAvatar() });
       if (a === 'photo') handler({ type: 'notify', from: 'Priya', message: 'Look at this sunset!', media: 'photo', source: 'WhatsApp' });
       if (a === 'private') handler({ type: 'notify', from: 'Priya', message: 'How are you?', source: 'WhatsApp', gate: true });
       if (a === 'voice') handler({ type: 'notify', from: 'Amma · Family', message: '', media: 'voice', source: 'WhatsApp' });
@@ -399,6 +410,13 @@
       const av = wrap.querySelector('.avatar');
       av.textContent = initials(ev.from);
       av.style.setProperty('--avatar', colorFromName(ev.from));
+      if (ev.avatar && ev.avatar.startsWith('data:image/')) {
+        // the sender's real profile photo (initials stay underneath as a fallback)
+        const img = new Image();
+        img.alt = '';
+        img.onload = () => { av.textContent = ''; av.appendChild(img); av.classList.add('photo'); };
+        img.src = ev.avatar;
+      }
       const from = wrap.querySelector('.from');
       [...ev.from].forEach((ch, i) => {
         const s = document.createElement('span');

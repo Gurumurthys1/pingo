@@ -1,7 +1,7 @@
 # Pingo notification listener (runs under Windows PowerShell 5.1).
 # Polls the Windows notification center through the UserNotificationListener
 # WinRT API and prints one JSON line per NEW toast:
-#   {"app":"WhatsApp","aumid":"...","texts":["Priya","Lunch at 1?"],"time":1700000000000}
+#   {"app":"WhatsApp","aumid":"...","texts":["Priya","Lunch at 1?"],"avatar":"https://...","time":1700000000000}
 # Status lines look like {"status":"allowed"} / {"status":"denied"}.
 # Nothing leaves this PC: Pingo's main process reads stdout and that's it.
 
@@ -20,6 +20,64 @@ function Await($op, [Type]$type) {
   $task.Result
 }
 function Emit($obj) { [Console]::Out.WriteLine(($obj | ConvertTo-Json -Compress -Depth 4)); [Console]::Out.Flush() }
+
+# The WinRT API only exposes a toast's text. The sender's profile picture
+# (<image placement="appLogoOverride" src="...">) is in the toast XML, which
+# Windows keeps in its notification database. Read it read-only with the
+# SQLite engine that ships with Windows (winsqlite3.dll).
+Add-Type -Language CSharp -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+using System.Text;
+public static class PingoWpn {
+  [DllImport("winsqlite3.dll", EntryPoint = "sqlite3_open_v2")] static extern int Open(byte[] file, out IntPtr db, int flags, IntPtr vfs);
+  [DllImport("winsqlite3.dll", EntryPoint = "sqlite3_prepare_v2")] static extern int Prepare(IntPtr db, byte[] sql, int len, out IntPtr st, IntPtr tail);
+  [DllImport("winsqlite3.dll", EntryPoint = "sqlite3_bind_int64")] static extern int BindInt64(IntPtr st, int i, long v);
+  [DllImport("winsqlite3.dll", EntryPoint = "sqlite3_step")] static extern int Step(IntPtr st);
+  [DllImport("winsqlite3.dll", EntryPoint = "sqlite3_column_blob")] static extern IntPtr ColumnBlob(IntPtr st, int i);
+  [DllImport("winsqlite3.dll", EntryPoint = "sqlite3_column_bytes")] static extern int ColumnBytes(IntPtr st, int i);
+  [DllImport("winsqlite3.dll", EntryPoint = "sqlite3_finalize")] static extern int Finalize(IntPtr st);
+  [DllImport("winsqlite3.dll", EntryPoint = "sqlite3_close")] static extern int Close(IntPtr db);
+  static byte[] Z(string s) { return Encoding.UTF8.GetBytes(s + "\0"); }
+  public static string Payload(string path, long id) {
+    IntPtr db;
+    if (Open(Z(path), out db, 1 /* SQLITE_OPEN_READONLY */, IntPtr.Zero) != 0) { Close(db); return null; }
+    try {
+      IntPtr st;
+      if (Prepare(db, Z("SELECT Payload FROM Notification WHERE Id = ?1"), -1, out st, IntPtr.Zero) != 0) return null;
+      try {
+        BindInt64(st, 1, id);
+        if (Step(st) != 100 /* SQLITE_ROW */) return null;
+        int n = ColumnBytes(st, 0);
+        IntPtr p = ColumnBlob(st, 0);
+        if (p == IntPtr.Zero || n <= 0) return null;
+        byte[] buf = new byte[n];
+        Marshal.Copy(p, buf, 0, n);
+        return Encoding.UTF8.GetString(buf);
+      } finally { Finalize(st); }
+    } finally { Close(db); }
+  }
+}
+'@
+$wpnDb = Join-Path $env:LOCALAPPDATA 'Microsoft\Windows\Notifications\wpndatabase.db'
+# only look up pictures for chat apps (PINGO_AVATAR_APPS widens this for tests)
+$avatarApps = if ($env:PINGO_AVATAR_APPS) { $env:PINGO_AVATAR_APPS } else { 'WhatsApp|Telegram' }
+
+function Get-Avatar([long]$id) {
+  for ($try = 0; $try -lt 3; $try++) {
+    $xml = $null
+    try { $xml = [PingoWpn]::Payload($wpnDb, $id) } catch { }
+    if ($xml) {
+      $tag = [regex]::Match($xml, '<image\b[^>]*placement="appLogoOverride"[^>]*>')
+      if (-not $tag.Success) { return $null }
+      $src = [regex]::Match($tag.Value, '\bsrc="([^"]+)"')
+      if ($src.Success) { return [System.Net.WebUtility]::HtmlDecode($src.Groups[1].Value) }
+      return $null
+    }
+    Start-Sleep -Milliseconds 250   # row may land a moment after the toast
+  }
+  return $null
+}
 
 [Windows.UI.Notifications.Management.UserNotificationListener, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
 [Windows.UI.Notifications.KnownNotificationBindings, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
@@ -50,11 +108,16 @@ while ($true) {
       $binding = $n.Notification.Visual.GetBinding([Windows.UI.Notifications.KnownNotificationBindings]::ToastGeneric)
       if ($null -eq $binding) { continue }
       $texts = @($binding.GetTextElements() | ForEach-Object { $_.Text })
+      $app = $n.AppInfo.DisplayInfo.DisplayName
+      $aumid = $n.AppInfo.AppUserModelId
+      $avatar = $null
+      if ("$app $aumid" -match $avatarApps) { $avatar = Get-Avatar ([long]$n.Id) }
       Emit @{
-        app   = $n.AppInfo.DisplayInfo.DisplayName
-        aumid = $n.AppInfo.AppUserModelId
-        texts = $texts
-        time  = $n.CreationTime.ToUnixTimeMilliseconds()
+        app    = $app
+        aumid  = $aumid
+        texts  = $texts
+        avatar = $avatar
+        time   = $n.CreationTime.ToUnixTimeMilliseconds()
       }
     }
     $previous = $current

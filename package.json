@@ -1,7 +1,7 @@
 {
   "name": "pingo",
   "productName": "Pingo",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Pingo - a pixel desktop buddy that reminds you to drink water and delivers your messages in style.",
   "main": "src/main.js",
   "author": "Gurumurthys1",

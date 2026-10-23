@@ -87,7 +87,7 @@ function createChatWatcher({ onMessage, onStatus }) {
       const app = APPS.find((a) => a.match.test(`${msg.app} ${msg.aumid}`));
       if (!app) return;
       const parsed = parse(msg.texts, app.source);
-      if (parsed) onMessage({ ...parsed, source: app.source, at: msg.time || Date.now() });
+      if (parsed) onMessage({ ...parsed, source: app.source, at: msg.time || Date.now(), avatar: msg.avatar || null });
     });
     child.stderr.on('data', (d) => {
       const text = String(d).trim();

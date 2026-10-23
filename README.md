@@ -37,8 +37,13 @@ below.
 
   Give your buddy any name. Add **your name** too, and the buddy greets you with it ("Hi Guru!",
   "GURU, SIP TIME!"). Switching characters plays a "ta-da" poof. Hover over the buddy to see a name tag.
-- **Photo, voice and other media messages.** Windows passes only the notification's text, never
-  the attached picture. So Pingo recognises WhatsApp's media labels (📷 Photo, 🎥 Video,
+- **Real profile photos.** The card's avatar is the sender's actual WhatsApp profile picture.
+  WhatsApp includes it in its Windows notification, and Pingo reads it from Windows' notification
+  database ([avatar.js](src/watchers/avatar.js)). Pictures are accepted only from WhatsApp/Telegram
+  image servers, and must really be images. If there's no photo, the initials show instead.
+- **Photo, voice and other media messages.** WhatsApp doesn't put the photo or sticker itself in the
+  notification, and its downloaded media is end-to-end encrypted, so no other app can show the
+  original. So Pingo recognises WhatsApp's media labels (📷 Photo, 🎥 Video,
   🎤 Voice message, 📄 Document, Sticker, GIF, 📍 Location, 👤 Contact). The card then shows a
   matching pixel tile: a polaroid that "develops" for photos, a film strip for videos, bouncing
   equaliser bars for voice notes, and so on. Any caption appears under the tile. Photos and videos

@@ -9,11 +9,12 @@
 //   Pingo.exe --stop     pause the running Pingo
 //   Pingo.exe --quit     close the running Pingo completely
 
-const { app, BrowserWindow, Tray, Menu, ipcMain, screen, nativeImage, shell, session, safeStorage } = require('electron');
+const { app, BrowserWindow, Tray, Menu, ipcMain, screen, nativeImage, shell, session, safeStorage, net } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
 const { createChatWatcher } = require('./watchers/chat-watcher');
+const { createAvatarResolver } = require('./watchers/avatar');
 const { pixels: iconPixels } = require('./icon-art');
 const faceid = require('./faceid');
 
@@ -29,9 +30,19 @@ let nextReminderAt = 0;
 let quitting = false;
 let chatStatus = 'off'; // off | starting | allowed | toasts-off | denied | restarting
 
+// Profile photos: WhatsApp/Telegram image servers, or files inside the apps'
+// own Windows package folders (%LOCALAPPDATA%\Packages\...).
+const resolveAvatar = createAvatarResolver({
+  fetchImpl: (url, opts) => net.fetch(url, opts),
+  allowedDirs: [process.env.LOCALAPPDATA && path.join(process.env.LOCALAPPDATA, 'Packages')],
+});
+
 const chatWatcher = createChatWatcher({
-  onMessage: ({ from, message, source, at, media }) =>
-    notify(from, settings.showPreview ? message : media ? '' : 'Sent you a message', source, at, media),
+  onMessage: async ({ from, message, source, at, media, avatar }) => {
+    // the sender's real profile photo, when the toast carries one (falls back to initials)
+    const photo = await resolveAvatar(avatar);
+    notify(from, settings.showPreview ? message : media ? '' : 'Sent you a message', source, at, media, photo);
+  },
   onStatus: (s) => {
     chatStatus = s;
     if (control && !control.isDestroyed()) control.webContents.send('control:state', state());
@@ -359,7 +370,7 @@ ipcMain.on('control:action', (_e, action) => {
 
 const MEDIA_KINDS = ['photo', 'video', 'voice', 'audio', 'document', 'location', 'contact', 'sticker', 'gif'];
 
-function notify(from, message, source, at = Date.now(), media = null) {
+function notify(from, message, source, at = Date.now(), media = null, avatar = null) {
   if (!settings.active || !settings.notificationsOn) return false;
   send({
     type: 'notify',
@@ -367,6 +378,7 @@ function notify(from, message, source, at = Date.now(), media = null) {
     message: String(message || '').slice(0, 280),
     source: String(source || 'WhatsApp').slice(0, 24),
     media: MEDIA_KINDS.includes(media) ? media : null,
+    avatar: typeof avatar === 'string' && avatar.startsWith('data:image/') ? avatar : null,
     gate: settings.faceGate && faceProfile.length > 0, // overlay checks the camera before revealing text
     at,
   });
